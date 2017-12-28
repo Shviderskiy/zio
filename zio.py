@@ -1,35 +1,35 @@
 #!/usr/bin/env python2
 #===============================================================================
 # The Star And Thank Author License (SATA)
-# 
+#
 # Copyright (c) 2014 zTrix(i@ztrix.me)
-# 
+#
 # Project Url: https://github.com/zTrix/zio
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software. 
-# 
-# And wait, the most important, you shall star/+1/like the project(s) in project url 
-# section above first, and then thank the author(s) in Copyright section. 
-# 
+# all copies or substantial portions of the Software.
+#
+# And wait, the most important, you shall star/+1/like the project(s) in project url
+# section above first, and then thank the author(s) in Copyright section.
+#
 # Here are some suggested ways:
-# 
+#
 #  - Email the authors a thank-you letter, and make friends with him/her/them.
 #  - Report bugs or issues.
 #  - Tell friends what a wonderful project this is.
 #  - And, sure, you can just express thanks in your mind without telling the world.
-# 
-# Contributors of this project by forking have the option to add his/her name and 
-# forked project url at copyright and project url sections, but shall not delete 
+#
+# Contributors of this project by forking have the option to add his/her name and
+# forked project url at copyright and project url sections, but shall not delete
 # or modify anything else in these two sections.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -43,7 +43,7 @@ from __future__ import print_function
 __version__ = "1.0.3"
 __project__ = "https://github.com/zTrix/zio"
 
-import struct, socket, os, sys, subprocess, threading, pty, time, re, select, termios, resource, tty, errno, signal, fcntl, gc, platform, datetime, inspect, atexit
+import struct, socket, os, sys, subprocess, threading, pty, time, re, select, termios, resource, tty, errno, signal, fcntl, gc, platform, datetime, inspect, atexit, ctypes
 try:
     from io import StringIO
 except ImportError:
@@ -112,7 +112,7 @@ def _lb_wrapper(func):
                 v = struct.pack(endian + pfs[bits], i % (1 << bits))
                 ret.append(v)
             else:
-                if not i: 
+                if not i:
                     ret.append(None)
                 else:
                     v = struct.unpack(endian + pfs[bits] * (len(i) * 8/bits), i)
@@ -239,7 +239,12 @@ class zio(object):
         self.close_delay = 0.1      # like pexcept, will used by close(), to give kernel time to update process status, time in seconds
         self.terminate_delay = 0.1  # like close_delay
         self.cwd = cwd
-        self.env = env
+
+        if isinstance(env, dict):
+            self.env = [x + "=" + env[x] for x in env.keys()]
+        else:
+           self.env = env
+
         self.sighup = sighup
 
         self.flag_eof = False
@@ -361,11 +366,18 @@ class zio(object):
 
             if self.cwd is not None:
                 os.chdir(self.cwd)
-            
+
+            libc = ctypes.CDLL("libc.so.6")
             if self.env is None:
-                os.execv(self.command, self.args)
+                c_argv = (ctypes.c_char_p * len(self.args))()
+                c_argv[:] = self.args
+                libc.execv(ctypes.c_char_p(self.command), c_argv)
             else:
-                os.execvpe(self.command, self.args, self.env)
+                c_argv = (ctypes.c_char_p * len(self.args))()
+                c_argv[:] = self.args
+                c_envp = (ctypes.c_char_p * len(self.env))()
+                c_envp[:] = self.env
+                libc.execvpe(ctypes.c_char_p(self.command), c_argv, c_envp)
 
             # TODO: add subprocess errpipe to detect child error
             # child exit here, the same as subprocess module do
@@ -420,7 +432,7 @@ class zio(object):
             raise Exception('bad print_read value')
 
         assert callable(self._print_read) and len(inspect.getargspec(self._print_read).args) == 1
- 
+
     @property
     def print_write(self):
         return self._print_write and (self._print_write is not NONE)
