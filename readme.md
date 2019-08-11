@@ -1,7 +1,7 @@
 
 # zio
 
-[![Build Status](https://travis-ci.org/zTrix/zio.png)](https://travis-ci.org/zTrix/zio)
+[![Build Status](https://travis-ci.org/Shviderskiy/zio.png)](https://travis-ci.org/Shviderskiy/zio)
 
 [zio] is an easy-to-use io library for pwning development, supporting an unified interface for local process pwning and TCP socket io.
 
